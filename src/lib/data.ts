@@ -1,6 +1,7 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
 import { all, get, run } from "./db";
-import { simulateLatency } from "./demo";
+// import { simulateLatency } from "./demo";
 import type { Pizza, PizzaSize, RatingSummary } from "./types";
 
 interface PizzaRow {
@@ -32,7 +33,13 @@ const PIZZA_COLUMNS =
   "pizza_type_id AS id, name, category, ingredients AS description";
 
 export async function getPizzas(): Promise<Pizza[]> {
-  await simulateLatency("read");
+  // "use cache" berpasangan dengan cacheLife dan cacheTag. Ini memberi tahu Next.js bahwa data yang diambil dari fungsi ini dapat disimpan di cache untuk meningkatkan kinerja.
+  "use cache";
+  // cacheLife gunanya untuk mengatur berapa lama data ini akan disimpan di cache. Dalam hal ini, data akan disimpan selama beberapa jam.
+  // cacheTag gunanya untuk memberi label pada data ini sehingga bisa diidentifikasi dan dikelompokkan dengan data lain yang memiliki tag yang sama. Dalam hal ini, data diberi tag "menu".
+  cacheLife("hours");
+  cacheTag("menu");
+  // await simulateLatency("read");
   const [rows, prices] = await Promise.all([
     all<PizzaRow>(`SELECT ${PIZZA_COLUMNS} FROM pizza_types ORDER BY name`),
     all<PriceRow>("SELECT pizza_type_id AS id, size, price FROM pizzas"),
@@ -41,7 +48,10 @@ export async function getPizzas(): Promise<Pizza[]> {
 }
 
 export async function getPizza(id: string): Promise<Pizza | null> {
-  await simulateLatency("read");
+  "use cache";
+  cacheLife("hours");
+  cacheTag("menu");
+  // await simulateLatency("read");
   const row = await get<PizzaRow>(
     `SELECT ${PIZZA_COLUMNS} FROM pizza_types WHERE pizza_type_id = ?`,
     [id],
@@ -63,7 +73,7 @@ export async function pizzaExists(id: string): Promise<boolean> {
 }
 
 export async function getFavoriteIds(): Promise<string[]> {
-  await simulateLatency("read");
+  // await simulateLatency("read");
   const rows = await all<{ id: string }>(
     "SELECT pizza_type_id AS id FROM favorites",
   );
@@ -85,7 +95,7 @@ export async function toggleFavorite(id: string): Promise<boolean> {
 }
 
 export async function getRatingSummary(id: string): Promise<RatingSummary> {
-  await simulateLatency("read");
+  // await simulateLatency("read");
   const row = await get<{ average: number | null; count: number }>(
     "SELECT AVG(stars) AS average, COUNT(*) AS count FROM ratings WHERE pizza_type_id = ?",
     [id],
