@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { all, get, run } from "./db";
-// import { simulateLatency } from "./demo";
+import { simulateLatency } from "./demo";
 import type { Pizza, PizzaSize, RatingSummary } from "./types";
 
 interface PizzaRow {
@@ -64,6 +64,15 @@ export async function getPizza(id: string): Promise<Pizza | null> {
   return toPizza(row, prices);
 }
 
+export async function getPizzaOfTheDay(): Promise<Pizza> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("menu");
+  const pizzas = await getPizzas();
+  const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  return pizzas[dayIndex % pizzas.length];
+}
+
 export async function pizzaExists(id: string): Promise<boolean> {
   const row = await get<{ id: string }>(
     "SELECT pizza_type_id AS id FROM pizza_types WHERE pizza_type_id = ?",
@@ -73,7 +82,7 @@ export async function pizzaExists(id: string): Promise<boolean> {
 }
 
 export async function getFavoriteIds(): Promise<string[]> {
-  // await simulateLatency("read");
+  await simulateLatency("read");
   const rows = await all<{ id: string }>(
     "SELECT pizza_type_id AS id FROM favorites",
   );
@@ -95,7 +104,7 @@ export async function toggleFavorite(id: string): Promise<boolean> {
 }
 
 export async function getRatingSummary(id: string): Promise<RatingSummary> {
-  // await simulateLatency("read");
+  await simulateLatency("read");
   const row = await get<{ average: number | null; count: number }>(
     "SELECT AVG(stars) AS average, COUNT(*) AS count FROM ratings WHERE pizza_type_id = ?",
     [id],
